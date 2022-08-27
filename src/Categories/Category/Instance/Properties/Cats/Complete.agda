@@ -3,180 +3,148 @@
 module Categories.Category.Instance.Properties.Cats.Complete where
 
 open import Categories.Category
-open import Categories.Category.Complete
 open import Categories.Category.Instance.Cats
-open import Categories.Diagram.Cone
+import Categories.Diagram.Equalizer as Equalizer
 open import Categories.Functor
-open import Categories.Morphism
-open import Categories.Morphism.Reasoning
+import Categories.Morphism as Morphism
+import Categories.Morphism.Reasoning as MorphismReasoning
 open import Categories.NaturalTransformation.NaturalIsomorphism
 
-open import Data.Product
 open import Level
 
-private module _ {o ℓ e} {J : Category o ℓ e} (F : Functor J (Cats (o ⊔ ℓ ⊔ e) (o ⊔ ℓ ⊔ e) (o ⊔ e))) where
-  open Functor F
-  module FJ j = Category (F₀ j)
 
-  -- The objects of the limit of F.
-  record NObj : Set (o ⊔ ℓ ⊔ e) where
+-- Cats has all equalizers
+
+module _ {o ℓ e : Level} {C D : Category (o ⊔ ℓ ⊔ e) (ℓ ⊔ e) e} (F G : Functor C D) where
+
+  module C = Category C
+  module F = Functor F
+  module G = Functor G
+
+  open Category D
+  open HomReasoning
+  open Morphism D
+  open MorphismReasoning D
+
+  open Equalizer (Cats (o ⊔ ℓ ⊔ e) (ℓ ⊔ e) e)
+
+  record CEO : Set (o ⊔ ℓ ⊔ e) where
     field
-      -- For each object j of J, we have an object of F j.
-      ψ : ∀ j → FJ.Obj j
-      -- For each morphism f : j ⇒ k in J, we have the isomorphism (in F k):
-      --   F f (ψ j) ≅ ψ k.
-      commute : ∀ {j k} (f : J [ j , k ]) → _≅_ (F₀ k) (Functor.F₀ (F₁ f) (ψ j)) (ψ k)
-    module commute {j k} (f : J [ j , k ]) = _≅_ (commute f)
+      obj : C.Obj
+      iso : F.₀ obj ≅ G.₀ obj
+    module iso = _≅_ iso
 
-  -- The morphisms of the limit of F.
-  record N⇒ (A B : NObj) : Set (o ⊔ ℓ ⊔ e) where
-    module A = NObj A
-    module B = NObj B
+  record CE⇒ (X Y : CEO) : Set (ℓ ⊔ e) where
+    private
+      module X = CEO X
+      module Y = CEO Y
     field
-      -- For each object j in J, we have a morphism in F j from A.ψ j to B.ψ j.
-      arr : ∀ j → F₀ j [ A.ψ j , B.ψ j ]
-      -- For each morphism f : j ⇒ k in J, we have the equality in F k:
-      --   B.commute f ∘ F f (arr j) ≈ arr k ∘ A.commute f.
-      commute : ∀ {j k} (f : J [ j , k ]) → F₀ k [ F₀ k [ B.commute.from f ∘ Functor.F₁ (F₁ f) (arr j) ] ≈ F₀ k [ arr k ∘ A.commute.from f ] ]
-
-  -- The actual category that is the limit of F.
-  N : Category (o ⊔ ℓ ⊔ e) (o ⊔ ℓ ⊔ e) (o ⊔ e)
-  N = record
-    { Obj = NObj
-    ; _⇒_ = N⇒
-    ; _≈_ = λ f g → ∀ j → F₀ j [ N⇒.arr f j ≈ N⇒.arr g j ]
-    ; id = λ {A} → let module A = NObj A in record
-      { arr = λ j → FJ.id j
-      ; commute = λ {j} {k} g → let open FJ.HomReasoning k in begin
-        F₀ k [ A.commute.from g ∘ Functor.F₁ (F₁ g) (FJ.id j) ] ≈⟨ refl⟩∘⟨ Functor.identity (F₁ g) ⟩
-        F₀ k [ A.commute.from g ∘ FJ.id k ]                     ≈⟨ id-comm (F₀ k) ⟩
-        F₀ k [ FJ.id k ∘ A.commute.from g ]                     ∎
+      arr : C [ X.obj , Y.obj ]
+      commute : Y.iso.from ∘ F.₁ arr ≈ G.₁ arr ∘ X.iso.from
+      
+  CE : Category (o ⊔ ℓ ⊔ e) (ℓ ⊔ e) e
+  CE = record
+    { Obj = CEO
+    ; _⇒_ = CE⇒
+    ; _≈_ = λ f g → C [ CE⇒.arr f ≈ CE⇒.arr g ]
+    ; id = λ {A} → let module A = CEO A in record
+      { arr = C.id
+      ; commute = begin
+        A.iso.from ∘ F.₁ C.id ≈⟨ elimʳ F.identity ⟩
+        A.iso.from            ≈⟨ introˡ G.identity ⟩
+        G.₁ C.id ∘ A.iso.from ∎
       }
-    ; _∘_ = λ {A} {B} {C} f g →
+    ; _∘_ = λ {X} {Y} {Z} f g →
       let
-        module A = NObj A
-        module B = NObj B
-        module C = NObj C
+        module X = CEO X
+        module Y = CEO Y
+        module Z = CEO Z
+        module f = CE⇒ f
+        module g = CE⇒ g
       in record
-        { arr = λ j → F₀ j [ N⇒.arr f j ∘ N⇒.arr g j ]
-        ; commute = λ {j} {k} h → let open FJ.HomReasoning k in begin
-          F₀ k [ C.commute.from h ∘ Functor.F₁ (F₁ h) (F₀ j [ N⇒.arr f j ∘ N⇒.arr g j ]) ]                     ≈⟨ pushʳ (F₀ k) (Functor.homomorphism (F₁ h)) ⟩
-          F₀ k [ F₀ k [ C.commute.from h ∘ Functor.F₁ (F₁ h) (N⇒.arr f j) ] ∘ Functor.F₁ (F₁ h) (N⇒.arr g j) ] ≈⟨ pushˡ (F₀ k) (N⇒.commute f h) ⟩
-          F₀ k [ N⇒.arr f k ∘ F₀ k [ B.commute.from h ∘ Functor.F₁ (F₁ h) (N⇒.arr g j) ] ]                     ≈⟨ pushʳ (F₀ k) (N⇒.commute g h) ⟩
-          F₀ k [ F₀ k [ N⇒.arr f k ∘ N⇒.arr g k ] ∘ A.commute.from h ]                                         ∎
+        { arr = C [ f.arr ∘ g.arr ]
+        ; commute = begin
+          Z.iso.from ∘ F.₁ (C [ f.arr ∘ g.arr ]) ≈⟨ refl⟩∘⟨ F.homomorphism ⟩
+          Z.iso.from ∘ (F.₁ f.arr ∘ F.₁ g.arr)   ≈⟨ sym-assoc ⟩
+          (Z.iso.from ∘ F.₁ f.arr) ∘ F.₁ g.arr   ≈⟨ f.commute ⟩∘⟨refl ⟩
+          (G.₁ f.arr ∘ Y.iso.from) ∘ F.₁ g.arr   ≈⟨ assoc ⟩
+          G.₁ f.arr ∘ (Y.iso.from ∘ F.₁ g.arr)   ≈⟨ refl⟩∘⟨ g.commute ⟩
+          G.₁ f.arr ∘ (G.₁ g.arr ∘ X.iso.from)   ≈⟨ sym-assoc ⟩
+          (G.₁ f.arr ∘ G.₁ g.arr) ∘ X.iso.from   ≈˘⟨ G.homomorphism ⟩∘⟨refl ⟩
+          G.₁ (C [ f.arr ∘ g.arr ]) ∘ X.iso.from ∎
         }
-    ; assoc = λ j → FJ.assoc j
-    ; sym-assoc = λ j → FJ.sym-assoc j
-    ; identityˡ = λ j → FJ.identityˡ j
-    ; identityʳ = λ j → FJ.identityʳ j
-    ; identity² = λ j → FJ.identity² j
+    ; assoc = C.assoc
+    ; sym-assoc = C.sym-assoc
+    ; identityˡ = C.identityˡ
+    ; identityʳ = C.identityʳ
+    ; identity² = C.identity²
     ; equiv = record
-      { refl = λ j → FJ.Equiv.refl j
-      ; sym = λ f≈g j → FJ.Equiv.sym j (f≈g j)
-      ; trans = λ f≈g g≈h j → FJ.Equiv.trans j (f≈g j) (g≈h j)
+      { refl = C.Equiv.refl
+      ; sym = C.Equiv.sym
+      ; trans = C.Equiv.trans
       }
-    ; ∘-resp-≈ = λ f≈h g≈i j → FJ.∘-resp-≈ j (f≈h j) (g≈i j)
+    ; ∘-resp-≈ = C.∘-resp-≈
     }
 
-  -- For any j in J, we have a functor from the limit of F to F j.
-  ψ : ∀ j → Functor N (F₀ j)
-  ψ j = record
-      { F₀ = λ A → NObj.ψ A j
-    ; F₁ = λ f → N⇒.arr f j
-    ; identity = FJ.Equiv.refl j
-    ; homomorphism = FJ.Equiv.refl j
-    ; F-resp-≈ = λ f≈g → f≈g j
+  CE⇒C : Functor CE C
+  CE⇒C = record
+    { F₀ = CEO.obj
+    ; F₁ = CE⇒.arr
+    ; identity = C.Equiv.refl
+    ; homomorphism = C.Equiv.refl
+    ; F-resp-≈ = λ f≈g → f≈g
     }
 
-  -- This functor plays nice with F
-  ψ-commute : ∀ {j k} (f : J [ j , k ]) → F₁ f ∘F ψ j ≃ ψ k
-  ψ-commute {j} {k} f = niHelper record
-    { η = λ n → NObj.commute.from n f
-    ; η⁻¹ = λ n → NObj.commute.to n f
-    ; commute = λ g → N⇒.commute g f
-    ; iso = λ n → NObj.commute.iso n f
-    }
-
-  -- Thus N forms the point of a Cone F
-  ⊤ : Cone F
-  ⊤ = record
-    { apex = record
-      { ψ = ψ
-      ; commute = ψ-commute
+  CE⇒C-isEqualizer : IsEqualizer CE⇒C F G
+  CE⇒C-isEqualizer = record
+    { equality = niHelper record
+      { η = CEO.iso.from
+      ; η⁻¹ = CEO.iso.to
+      ; commute = CE⇒.commute
+      ; iso = CEO.iso.iso
       }
-    }
-
-  -- For any Cone F we have a functor from its point to N
-  arr : ∀ (C : Cone F) → Functor (Cone.N C) N
-  arr C = record
-    { F₀ = λ n → record
-      { ψ = λ j → Functor.₀ (Cone.ψ C j) n
-      ; commute = λ f → record
-        { from = NaturalIsomorphism.⇒.η (Cone.commute C f) n
-        ; to = NaturalIsomorphism.⇐.η (Cone.commute C f) n
+    ; equalize = λ {X} {h} F∘h≃G∘h → record
+      { F₀ = λ x → record
+        { obj = Functor.₀ h x
         ; iso = record
-          { isoˡ = NaturalIsomorphism.iso.isoˡ (Cone.commute C f) n
-          ; isoʳ = NaturalIsomorphism.iso.isoʳ (Cone.commute C f) n
+          { iso = NaturalIsomorphism.iso F∘h≃G∘h x
           }
         }
+      ; F₁ = λ f → record
+        { arr = Functor.₁ h f
+        ; commute = NaturalIsomorphism.⇒.commute F∘h≃G∘h f
+        }
+      ; identity = Functor.identity h
+      ; homomorphism = Functor.homomorphism h
+      ; F-resp-≈ = Functor.F-resp-≈ h
       }
-    ; F₁ = λ f → record
-      { arr = λ j → Functor.₁ (Cone.ψ C j) f
-      ; commute = λ g → NaturalIsomorphism.⇒.commute (Cone.commute C g) f
+    ; universal = λ {X} {h} {F∘h≃G∘h} → niHelper record
+      { η = λ x → C.id
+      ; η⁻¹ = λ x → C.id
+      ; commute = λ f → MorphismReasoning.id-comm-sym C
+      ; iso = λ x → record
+        { isoˡ = C.identity²
+        ; isoʳ = C.identity²
+        }
       }
-    ; identity = λ j → Functor.identity (Cone.ψ C j)
-    ; homomorphism = λ j → Functor.homomorphism (Cone.ψ C j)
-    ; F-resp-≈ = λ f≈g j → Functor.F-resp-≈ (Cone.ψ C j) f≈g
-    }
-
-  -- This functor plays nice with the Cone's ψ
-  !-commute : ∀ (C : Cone F) {j : Category.Obj J} → NaturalIsomorphism (ψ j ∘F arr C) (Cone.ψ C j)
-  !-commute C {j} = niHelper record
-    { η = λ n → FJ.id j
-    ; η⁻¹ = λ n → FJ.id j
-    ; commute = λ f → id-comm-sym (F₀ j)
-    ; iso = λ n → record
-      { isoˡ = FJ.identity² j
-      ; isoʳ = FJ.identity² j
-      }
-    }
-
-  -- Thus there is a morphism in Cones F from C to ⊤ for any C
-  ! : {C : Cone F} → Cone⇒ F C ⊤
-  ! {C} = record
-    { arr = arr C
-    ; commute = !-commute C
-    }
-
-  -- This morphism is unique
-  -- TODO: this definition is mostly rearranging Cone⇒.commute. It should probably expand it out to use all of Cone⇒.commute
-  !-unique : ∀ {C : Cone F} (f : Cone⇒ F C ⊤) → arr C ≃ Cone⇒.arr f
-  !-unique {C} f = niHelper record
-    { η = λ n → record
-      { arr = λ j → NaturalIsomorphism.⇐.η (Cone⇒.commute f) n
-      ; commute = λ {j} {k} g → let open FJ.HomReasoning k in begin
-        F₀ k [ NObj.commute.from (Functor.₀ (Cone⇒.arr f) n) g ∘ Functor.₁ (F₁ g) (NaturalIsomorphism.⇐.η (Cone⇒.commute f) n) ] ≈⟨ {!!} ⟩
-        F₀ k [ NaturalIsomorphism.⇐.η (Cone⇒.commute f) n ∘ NaturalIsomorphism.⇒.η (Cone.commute C g) n ] ∎
-      }
-    ; η⁻¹ = λ n → record
-      { arr = λ j → NaturalIsomorphism.⇒.η (Cone⇒.commute f) n
-      ; commute = λ {j} {k} g → {!!}
-      }
-    ; commute = λ g j → NaturalIsomorphism.⇐.commute (Cone⇒.commute f) g
-    ; iso = λ n → record
-      { isoˡ = λ j → NaturalIsomorphism.iso.isoʳ (Cone⇒.commute f) n
-      ; isoʳ = λ j → NaturalIsomorphism.iso.isoˡ (Cone⇒.commute f) n
+    ; unique = λ {X} {h} {i} {F∘h≃G∘h} h≃CE⇒C∘i → niHelper record
+      { η = λ x → record
+        { arr = NaturalIsomorphism.⇐.η h≃CE⇒C∘i x
+        ; commute = begin
+          NaturalIsomorphism.⇒.η F∘h≃G∘h x ∘ F.₁ (NaturalIsomorphism.⇐.η h≃CE⇒C∘i x) ≈⟨ {!!} ⟩
+          G.₁ (NaturalIsomorphism.⇐.η h≃CE⇒C∘i x) ∘ CEO.iso.from (Functor.₀ i x)     ∎
+        }
+      ; η⁻¹ = {!!}
+      ; commute = λ f → NaturalIsomorphism.⇐.commute h≃CE⇒C∘i f
+      ; iso = λ x → record
+        { isoˡ = NaturalIsomorphism.iso.isoʳ h≃CE⇒C∘i x
+        ; isoʳ = NaturalIsomorphism.iso.isoˡ h≃CE⇒C∘i x
+        }
       }
     }
 
--- Therefore Cats is complete!
-Cats-Complete : ∀ o ℓ e → Complete o ℓ e (Cats (o ⊔ ℓ ⊔ e) (o ⊔ ℓ ⊔ e) (o ⊔ e))
-Cats-Complete o ℓ e {j} F = record
-  { terminal = record
-    { ⊤ = ⊤ F
-    ; ⊤-is-terminal = record
-      { ! = ! F
-      ; !-unique = !-unique F
-      }
+  equalizer : Equalizer F G
+  equalizer = record
+    { arr = CE⇒C
+    ; isEqualizer = CE⇒C-isEqualizer
     }
-  }

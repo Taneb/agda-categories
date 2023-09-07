@@ -140,6 +140,10 @@ module _ {A : Obj} where
           A⇨.₁ (h g) ∘ A⇨.₁ (h f) ∘ p.p₂ X                                 ≈˘⟨ pushˡ A⇨.homomorphism ⟩
           A⇨.₁ (h g ∘ h f) ∘ p.p₂ X                                        ∎
 
+      private abstract
+        unit/η-lemma : ∀ (X : Obj) → eval′ ∘ first (λg π₂ ∘ !) ≈ eval′ ∘ first (λg (π₁ ∘ eval′ ∘ second id) ∘ λg swap)
+        unit/η-lemma X = {!!}
+
       Pi : Functor (Slice A) C
       Pi = record
         { F₀ = p.P
@@ -147,4 +151,15 @@ module _ {A : Obj} where
         ; identity = sym (p.unique _ !-unique₂ (id-comm ○ ∘-resp-≈ˡ (sym A⇨.identity)))
         ; homomorphism = sym (p.unique _ !-unique₂ homomorphism-lemma)
         ; F-resp-≈ = λ eq → p.universal-resp-≈ _ !-unique₂ (∘-resp-≈ˡ (A⇨.F-resp-≈ eq))
+        }
+
+      Delta⊣Pi : Delta product ⊣ Pi
+      Delta⊣Pi = record
+        { unit = ntHelper record
+          { η = {! λ X → p.universal _ (λ-unique₂′ (unit/η-lemma X)) !}
+          ; commute = {!!}
+          }
+        ; counit = {!!}
+        ; zig = {!!}
+        ; zag = {!!}
         }

@@ -5,6 +5,9 @@ open import Categories.Category
 module Categories.Functor.Slice {o ℓ e} (C : Category o ℓ e) where
 
 open import Categories.Adjoint
+open import Categories.Category.BinaryProducts
+open import Categories.Category.Cartesian C
+open import Categories.Category.CartesianClosed C
 open import Categories.Category.Construction.Pullbacks C
 import Categories.Category.Slice as S
 open import Categories.Diagram.Pullback C hiding (swap)
@@ -13,6 +16,7 @@ open import Categories.Functor.Properties
 open import Categories.Morphism.Reasoning C
 open import Categories.NaturalTransformation hiding (id)
 open import Categories.Object.Product C
+open import Categories.Object.Terminal C
 
 open Category C
 open HomReasoning
@@ -105,3 +109,42 @@ module _ {A : Obj} where
           { commute₁ = identityʳ
           ; commute₂ = △ g
           }
+
+    module _ (CCC : CartesianClosed) (pullback : ∀ {X Y Z} (h : X ⇒ Z) (i : Y ⇒ Z) → Pullback h i) where
+
+      open CartesianClosed CCC
+      open Cartesian cartesian
+      open BinaryProducts products
+      open Terminal terminal
+
+      private
+        module pullback {X Y Z} h i = Pullback (pullback {X} {Y} {Z} h i)
+        module A⇨ = Functor (A ⇨-)
+        module p X = pullback {⊤} (λg π₂) (A⇨.₁ (arr X))
+
+      private abstract
+        F₁-lemma : ∀ {X} {Y} (f : Slice⇒ X Y) → λg π₂ ∘ p.p₁ X ≈ A⇨.₁ (arr Y) ∘ A⇨.₁ (h f) ∘ p.p₂ X
+        F₁-lemma {X} {Y} f = begin
+          λg π₂ ∘ p.p₁ X                     ≈⟨ p.commute X ⟩
+          A⇨.₁ (arr X) ∘ p.p₂ X              ≈˘⟨ pullˡ ([ A ⇨- ]-resp-∘ (△ f)) ⟩
+          A⇨.₁ (arr Y) ∘ A⇨.₁ (h f) ∘ p.p₂ X ∎
+
+      private
+        homomorphism-lemma
+          : ∀ {X} {Y} {Z} {f : Slice⇒ X Y} {g : Slice⇒ Y Z}
+          → p.p₂ Z ∘ p.universal Z (F₁-lemma g) ∘ p.universal Y (F₁-lemma f)
+          ≈ A⇨.₁ (h g ∘ h f) ∘ p.p₂ X
+        homomorphism-lemma {X} {Y} {Z} {f} {g} = begin
+          p.p₂ Z ∘ p.universal Z (F₁-lemma g) ∘ p.universal Y (F₁-lemma f) ≈⟨ extendʳ (p.p₂∘universal≈h₂ Z) ⟩
+          A⇨.₁ (h g) ∘ p.p₂ Y ∘ p.universal Y (F₁-lemma f)                 ≈⟨ refl⟩∘⟨ p.p₂∘universal≈h₂ Y ⟩
+          A⇨.₁ (h g) ∘ A⇨.₁ (h f) ∘ p.p₂ X                                 ≈˘⟨ pushˡ A⇨.homomorphism ⟩
+          A⇨.₁ (h g ∘ h f) ∘ p.p₂ X                                        ∎
+
+      Pi : Functor (Slice A) C
+      Pi = record
+        { F₀ = p.P
+        ; F₁ = λ f → p.universal _ (F₁-lemma f)
+        ; identity = sym (p.unique _ !-unique₂ (id-comm ○ ∘-resp-≈ˡ (sym A⇨.identity)))
+        ; homomorphism = sym (p.unique _ !-unique₂ homomorphism-lemma)
+        ; F-resp-≈ = λ eq → p.universal-resp-≈ _ !-unique₂ (∘-resp-≈ˡ (A⇨.F-resp-≈ eq))
+        }

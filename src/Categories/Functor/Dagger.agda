@@ -29,6 +29,8 @@ id {C = C} = record
   ; F-resp-† = DaggerCategory.Equiv.refl C
   }
 
+infixr 9 _∘F†_
+
 _∘F†_ : ∀ {C : DaggerCategory o ℓ e} {D : DaggerCategory o′ ℓ′ e′} {E : DaggerCategory o″ ℓ″ e″}
       → DaggerFunctor D E → DaggerFunctor C D → DaggerFunctor C E
 _∘F†_ {E = E} F G = record

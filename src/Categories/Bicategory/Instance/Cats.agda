@@ -24,32 +24,7 @@ Cats o ℓ e = record
     ; hom     = Functors
     ; id      = λ {A} → const {D = Functors A A} {C = One} idF
     ; ⊚       = product
-    ; ⊚-assoc = λ {A B C D} →
-      let module D = Category D in
-      let module C = Category C in record
-        { F⇒G = ntHelper record
-          { η       = λ { ((F₁ , F₂) , F₃) → F⇒G (associator F₃ F₂ F₁) }
-          -- the proof is as below, so write it raw combinator-style
-          ; commute = λ { {(G₁ , G₂) , G₃} {(H₁ , H₂) , H₃} ((η₁ , η₂) , η₃) {x} →
-            let open Category D in let open HomReasoning in
-            identityˡ ○ ⟺ assoc ○ ∘-resp-≈ˡ (⟺ (homomorphism H₁)) ○ ⟺ identityʳ}
-        }
-        ; F⇐G = ntHelper record
-          { η       =  λ { ((F₁ , F₂) , F₃) → F⇐G (associator F₃ F₂ F₁)}
-          ; commute = λ { {(G₁ , G₂) , G₃} {(H₁ , H₂) , H₃} ((η₁ , η₂) , η₃) {x} →
-            let open Category D in let open HomReasoning in begin
-            id ∘ F₁ H₁ (F₁ H₂ (η η₃ x) C.∘ η η₂ (F₀ G₃ x)) ∘ η η₁ (F₀ G₂ (F₀ G₃ x))
-                ≈⟨ identityˡ ⟩
-            F₁ H₁ (F₁ H₂ (η η₃ x) C.∘ η η₂ (F₀ G₃ x)) ∘ η η₁ (F₀ G₂ (F₀ G₃ x))
-                ≈⟨ homomorphism H₁ ⟩∘⟨refl ⟩
-            (F₁ H₁ (F₁ H₂ (η η₃ x)) ∘ F₁ H₁ (η η₂ (F₀ G₃ x))) ∘ η η₁ (F₀ G₂ (F₀ G₃ x))
-                ≈⟨ assoc ⟩
-            F₁ H₁ (F₁ H₂ (η η₃ x)) ∘ F₁ H₁ (η η₂ (F₀ G₃ x)) ∘ η η₁ (F₀ G₂ (F₀ G₃ x))
-                ≈˘⟨ identityʳ ⟩
-            (F₁ H₁ (F₁ H₂ (η η₃ x)) ∘ F₁ H₁ (η η₂ (F₀ G₃ x)) ∘ η η₁ (F₀ G₂ (F₀ G₃ x))) ∘ id ∎ }
-          }
-        ; iso = λ X → record { isoˡ = D.identityʳ ; isoʳ = D.identityˡ }
-        }
+    ; ⊚-assoc = {!product-assoc!}
     ; unitˡ = λ {A} {B} → let module B = Category B in let open B.HomReasoning in record
       { F⇒G = ntHelper record { η = λ _ → F⇒G unitorˡ ; commute = λ _ → B.identityˡ }
       ; F⇐G = ntHelper record

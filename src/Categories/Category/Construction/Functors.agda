@@ -9,7 +9,7 @@ open import Data.Product using (_,_; proj₁; uncurry′)
 open import Categories.Adjoint.Equivalence using (⊣Equivalence)
 open import Categories.Adjoint.TwoSided using (withZig)
 open import Categories.Category using (Category; _[_∘_])
-open import Categories.Category.Product using (_※ⁿ_) renaming (Product to _×_)
+open import Categories.Category.Product using (_※ⁿ_; _⁂_; assocˡ) renaming (Product to _×_)
 open import Categories.Functor using (Functor; _∘F_) renaming (id to idF)
 open import Categories.Functor.Bifunctor
 open import Categories.Functor.Bifunctor.Properties using ([_]-decompose₂)
@@ -18,7 +18,7 @@ open import Categories.NaturalTransformation
   using (NaturalTransformation; ntHelper; _∘ᵥ_; _∘ˡ_; _∘ₕ_) renaming (id to idN)
 open import Categories.NaturalTransformation.Equivalence using (_≃_; ≃-isEquivalence)
 open import Categories.NaturalTransformation.NaturalIsomorphism
-  using (NaturalIsomorphism)
+  using (NaturalIsomorphism; niHelper)
 import Categories.Morphism.Reasoning as MR
 
 private
@@ -288,6 +288,35 @@ product {B = B} {C = C} {A = A} = record
     open HomReasoning
     open Functor
     module B = Category B
+    open NaturalTransformation
+
+product-assoc : NaturalIsomorphism
+  (product ∘F (product ⁂ idF))
+  (product ∘F (idF ⁂ product) ∘F (assocˡ (Functors C D) (Functors B C) (Functors A B)))
+product-assoc {C = C} {D = D} = niHelper record
+  { η = λ _ → ntHelper record
+    { η = λ _ → id
+    ; commute = λ _ → id-comm-sym
+    }
+  ; η⁻¹ = λ _ → ntHelper record
+    { η = λ _ → id
+    ; commute = λ _ → id-comm-sym
+    }
+  ; commute = λ {_} {((F , G) , _)} ((α , β) , γ) → begin
+    id ∘ (F₁ F (F₁ G (η γ _)) ∘ (F₁ F (η β _) ∘ η α _)) ≈⟨ refl⟩∘⟨ pushˡ (homomorphism F) ⟨
+    id ∘ (F₁ F (F₁ G (η γ _) C.∘ η β _) ∘ η α _)        ≈⟨ id-comm-sym ⟩
+    (F₁ F (F₁ G (η γ _) C.∘ η β _) ∘ η α _) ∘ id        ∎
+  ; iso = λ ((F , G) , H) → record
+    { isoˡ = identity²
+    ; isoʳ = identity²
+    }
+  }
+  where
+    open Category D
+    open MR D
+    open HomReasoning
+    module C = Category C
+    open Functor
     open NaturalTransformation
 
 -- op induces a Functor on the Functors category.
